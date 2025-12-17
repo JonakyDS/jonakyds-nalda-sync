@@ -705,17 +705,20 @@ class Jonakyds_Nalda_Sync_Admin {
                     let currentExportId = null;
                     let isCheckingExport = false;
                     let isExportButtonDisabled = false;
+                    let isPollActive = false;
                     
                     // Check for active export on page load
                     checkActiveExport();
                     
-                    // Check for active export every 30 seconds
+                    // Check for active export every 30 seconds (only if not already polling)
                     setInterval(function() {
-                        checkActiveExport();
+                        if (!isPollActive) {
+                            checkActiveExport();
+                        }
                     }, 30000);
                     
                     function checkActiveExport() {
-                        if (isCheckingExport) {
+                        if (isCheckingExport || isPollActive) {
                             return;
                         }
                         
@@ -746,11 +749,18 @@ class Jonakyds_Nalda_Sync_Admin {
                                     if (data.skipped !== undefined) $('#jonakyds-stat-skipped').text(data.skipped);
                                     if (data.total !== undefined && data.total > 0) $('#jonakyds-stat-total').text(data.total);
                                     
+                                    // Clear any existing interval before starting new poll
+                                    if (exportInterval) {
+                                        clearInterval(exportInterval);
+                                        exportInterval = null;
+                                    }
+                                    
+                                    isCheckingExport = false;
                                     pollProgress();
                                 } else {
                                     isExportButtonDisabled = false;
+                                    isCheckingExport = false;
                                 }
-                                isCheckingExport = false;
                             },
                             error: function() {
                                 isCheckingExport = false;
@@ -760,11 +770,17 @@ class Jonakyds_Nalda_Sync_Admin {
                     }
                     
                     $('#jonakyds-export-now').on('click', function() {
-                        if (isExportButtonDisabled) {
+                        if (isExportButtonDisabled || isPollActive) {
                             return false;
                         }
                         
                         isExportButtonDisabled = true;
+                        
+                        // Clear any existing interval
+                        if (exportInterval) {
+                            clearInterval(exportInterval);
+                            exportInterval = null;
+                        }
                         
                         const $button = $(this);
                         const $progressContainer = $('#jonakyds-progress-container');
@@ -799,6 +815,7 @@ class Jonakyds_Nalda_Sync_Admin {
                                         $button.prop('disabled', false).html('<?php _e('Export Now', 'jonakyds-nalda-sync'); ?>');
                                         $progressContainer.removeClass('active');
                                         isExportButtonDisabled = false;
+                                        isPollActive = false;
                                     }
                                 }
                             },
@@ -807,11 +824,13 @@ class Jonakyds_Nalda_Sync_Admin {
                                 $button.prop('disabled', false).html('<?php _e('Export Now', 'jonakyds-nalda-sync'); ?>');
                                 $progressContainer.removeClass('active');
                                 isExportButtonDisabled = false;
+                                isPollActive = false;
                             }
                         });
                     });
                     
                     function pollProgress() {
+                        isPollActive = true;
                         exportInterval = setInterval(function() {
                             $.ajax({
                                 url: ajaxurl,
@@ -839,6 +858,8 @@ class Jonakyds_Nalda_Sync_Admin {
                                         
                                         if (data.status === 'complete') {
                                             clearInterval(exportInterval);
+                                            exportInterval = null;
+                                            isPollActive = false;
                                             const $button = $('#jonakyds-export-now');
                                             const $progressContainer = $('#jonakyds-progress-container');
                                             
@@ -855,6 +876,8 @@ class Jonakyds_Nalda_Sync_Admin {
                                             }, 500);
                                         } else if (data.status === 'error') {
                                             clearInterval(exportInterval);
+                                            exportInterval = null;
+                                            isPollActive = false;
                                             const $button = $('#jonakyds-export-now');
                                             const $progressContainer = $('#jonakyds-progress-container');
                                             
@@ -864,6 +887,15 @@ class Jonakyds_Nalda_Sync_Admin {
                                             $progressContainer.removeClass('active');
                                         }
                                     }
+                                },
+                                error: function() {
+                                    // On error, stop polling and reset state
+                                    clearInterval(exportInterval);
+                                    exportInterval = null;
+                                    isPollActive = false;
+                                    isExportButtonDisabled = false;
+                                    const $button = $('#jonakyds-export-now');
+                                    $button.prop('disabled', false).html('<?php _e('Export Now', 'jonakyds-nalda-sync'); ?>');
                                 }
                             });
                         }, 1000);
