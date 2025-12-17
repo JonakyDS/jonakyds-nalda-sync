@@ -53,11 +53,65 @@ class Jonakyds_Export_Handler {
             'total' => 0
         ));
 
-        // Start background process
-        wp_schedule_single_event(time(), 'jonakyds_nalda_background_export', array($export_id));
-        spawn_cron();
+        // Trigger background process via non-blocking HTTP request
+        self::trigger_background_export($export_id);
 
         wp_send_json_success(array('export_id' => $export_id));
+    }
+    
+    /**
+     * Trigger background export via non-blocking HTTP request
+     */
+    private static function trigger_background_export($export_id) {
+        $url = admin_url('admin-ajax.php');
+        
+        $args = array(
+            'timeout'   => 0.01,
+            'blocking'  => false,
+            'sslverify' => false,
+            'body'      => array(
+                'action'    => 'jonakyds_nalda_run_background_export',
+                'export_id' => $export_id,
+                'nonce'     => wp_create_nonce('jonakyds_nalda_background_export')
+            )
+        );
+        
+        wp_remote_post($url, $args);
+    }
+    
+    /**
+     * AJAX handler for background export (called via non-blocking request)
+     */
+    public static function run_background_export() {
+        // Verify nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'jonakyds_nalda_background_export')) {
+            wp_die('Invalid nonce');
+        }
+        
+        $export_id = isset($_POST['export_id']) ? sanitize_text_field($_POST['export_id']) : '';
+        
+        if (empty($export_id)) {
+            wp_die('Invalid export ID');
+        }
+        
+        // Close connection to browser immediately
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        } else {
+            // For non-FastCGI environments
+            ignore_user_abort(true);
+            if (ob_get_level()) {
+                ob_end_clean();
+            }
+            header('Connection: close');
+            header('Content-Length: 0');
+            flush();
+        }
+        
+        // Run the export
+        self::background_export($export_id);
+        
+        wp_die();
     }
 
     /**
@@ -648,8 +702,10 @@ class Jonakyds_Export_Handler {
 add_action('wp_ajax_jonakyds_nalda_start_export', array('Jonakyds_Export_Handler', 'start_export'));
 add_action('wp_ajax_jonakyds_nalda_get_progress', array('Jonakyds_Export_Handler', 'get_progress'));
 add_action('wp_ajax_jonakyds_nalda_get_active_export', array('Jonakyds_Export_Handler', 'get_active_export'));
+add_action('wp_ajax_jonakyds_nalda_run_background_export', array('Jonakyds_Export_Handler', 'run_background_export'));
+add_action('wp_ajax_nopriv_jonakyds_nalda_run_background_export', array('Jonakyds_Export_Handler', 'run_background_export'));
 
-// Register background export action
+// Register background export action (for cron)
 add_action('jonakyds_nalda_background_export', array('Jonakyds_Export_Handler', 'background_export'));
 
 // Register cleanup action
