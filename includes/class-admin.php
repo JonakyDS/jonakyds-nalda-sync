@@ -48,7 +48,6 @@ class Jonakyds_Nalda_Sync_Admin {
         register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_condition');
         register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_default_brand');
         register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_require_gtin');
-        register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_public_access');
         // FTP settings
         register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_ftp_enabled');
         register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_ftp_server');
@@ -347,7 +346,6 @@ class Jonakyds_Nalda_Sync_Admin {
         $condition = get_option('jonakyds_nalda_sync_condition', 'new');
         $default_brand = get_option('jonakyds_nalda_sync_default_brand', '');
         $require_gtin = get_option('jonakyds_nalda_sync_require_gtin', 'yes');
-        $public_access = get_option('jonakyds_nalda_sync_public_access', 'no');
         
         // FTP settings
         $ftp_enabled = get_option('jonakyds_nalda_sync_ftp_enabled', 'no');
@@ -511,20 +509,6 @@ class Jonakyds_Nalda_Sync_Admin {
                                 <?php _e('Require GTIN (EAN/ISBN/UPC)', 'jonakyds-nalda-sync'); ?>
                             </label>
                             <small><?php _e('If checked, products without a GTIN will be skipped in the export.', 'jonakyds-nalda-sync'); ?></small>
-                        </div>
-
-                        <div class="jonakyds-form-row">
-                            <label for="jonakyds_nalda_sync_public_access">
-                                <input 
-                                    type="checkbox" 
-                                    id="jonakyds_nalda_sync_public_access" 
-                                    name="jonakyds_nalda_sync_public_access" 
-                                    value="yes"
-                                    <?php checked($public_access, 'yes'); ?>
-                                />
-                                <?php _e('Allow public CSV access', 'jonakyds-nalda-sync'); ?>
-                            </label>
-                            <small><?php _e('If checked, the CSV file URL will be accessible without login. Useful for Nalda to fetch the feed automatically.', 'jonakyds-nalda-sync'); ?></small>
                         </div>
 
                         <hr style="margin: 25px 0;">

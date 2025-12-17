@@ -150,13 +150,9 @@ add_filter('cron_schedules', 'jonakyds_nalda_sync_cron_schedules');
  */
 function jonakyds_nalda_sync_handle_download() {
     if (isset($_GET['jonakyds_nalda_download']) && $_GET['jonakyds_nalda_download'] === '1') {
-        // Check for valid nonce or allow public access if enabled
-        $public_access = get_option('jonakyds_nalda_sync_public_access', 'no');
-        
-        if ($public_access !== 'yes') {
-            if (!is_user_logged_in() || !current_user_can('manage_woocommerce')) {
-                wp_die(__('You do not have permission to download this file.', 'jonakyds-nalda-sync'));
-            }
+        // Check user permissions
+        if (!is_user_logged_in() || !current_user_can('manage_woocommerce')) {
+            wp_die(__('You do not have permission to download this file.', 'jonakyds-nalda-sync'));
         }
         
         $csv_file = JONAKYDS_NALDA_SYNC_CSV_DIR . 'nalda-products.csv';
