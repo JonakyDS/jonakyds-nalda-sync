@@ -423,7 +423,14 @@ class Jonakyds_Nalda_Sync_Admin {
                             </div>
                             <div class="jonakyds-csv-info-item">
                                 <strong><?php _e('Last Updated:', 'jonakyds-nalda-sync'); ?></strong>
-                                <span><?php echo date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($csv_info['modified'])); ?></span>
+                                <span><?php 
+                                    echo date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($csv_info['modified']));
+                                    $tz_string = get_option('timezone_string');
+                                    if (empty($tz_string)) {
+                                        $tz_string = 'UTC';
+                                    }
+                                    echo ' (' . esc_html($tz_string) . ')';
+                                ?></span>
                             </div>
                         </div>
                         <div class="jonakyds-csv-url">
