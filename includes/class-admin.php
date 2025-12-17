@@ -1167,14 +1167,16 @@ class Jonakyds_Nalda_Sync_Admin {
         }
 
         // Check if the remote path exists and is accessible
-        $path = rtrim($path, '/');
+        $path = trim($path, '/');
         if (empty($path)) {
-            $path = '.';
+            $check_path = '/';
+        } else {
+            $check_path = '/' . $path;
         }
         
-        $stat = @ssh2_sftp_stat($sftp, $path);
+        $stat = @ssh2_sftp_stat($sftp, $check_path);
         if ($stat === false) {
-            wp_send_json_error(array('message' => sprintf(__('Connection successful, but remote path "%s" is not accessible or does not exist.', 'jonakyds-nalda-sync'), $path)));
+            wp_send_json_error(array('message' => sprintf(__('Connection successful, but remote path "%s" is not accessible or does not exist.', 'jonakyds-nalda-sync'), $check_path)));
         }
 
         // Success!

@@ -309,12 +309,13 @@ class Jonakyds_Nalda_CSV_Exporter {
             return $result;
         }
 
-        // Prepare remote path
-        $sftp_path = rtrim($sftp_path, '/');
+        // Prepare remote path - ensure it starts with /
+        $sftp_path = trim($sftp_path, '/');
         if (empty($sftp_path)) {
-            $sftp_path = '.';
+            $remote_file = '/nalda-products.csv';
+        } else {
+            $remote_file = '/' . $sftp_path . '/nalda-products.csv';
         }
-        $remote_file = $sftp_path . '/nalda-products.csv';
 
         // Upload the file using SFTP stream wrapper
         $sftp_stream = @fopen("ssh2.sftp://" . intval($sftp) . $remote_file, 'w');
