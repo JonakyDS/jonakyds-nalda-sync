@@ -184,15 +184,51 @@ class Jonakyds_Nalda_CSV_Exporter {
      */
     private static function get_export_settings() {
         return array(
-            'country' => get_option('jonakyds_nalda_sync_country', 'CH'),
-            'currency' => get_option('jonakyds_nalda_sync_currency', 'CHF'),
-            'tax_rate' => get_option('jonakyds_nalda_sync_tax_rate', '8.1'),
+            'country' => WC()->countries->get_base_country(),
+            'currency' => get_woocommerce_currency(),
+            'tax_rate' => self::get_wc_tax_rate(),
             'return_days' => get_option('jonakyds_nalda_sync_return_days', '14'),
             'delivery_days' => get_option('jonakyds_nalda_sync_delivery_days', '1'),
             'condition' => get_option('jonakyds_nalda_sync_condition', 'new'),
-            'language' => get_option('jonakyds_nalda_sync_language', ''),
+            'language' => self::get_site_language(),
             'brand' => get_option('jonakyds_nalda_sync_default_brand', ''),
         );
+    }
+
+    /**
+     * Get the standard tax rate from WooCommerce
+     *
+     * @return string Tax rate percentage
+     */
+    private static function get_wc_tax_rate() {
+        if (!wc_tax_enabled()) {
+            return '0';
+        }
+        
+        // Get standard tax rates for the base country
+        $tax_rates = WC_Tax::get_rates_for_tax_class('');
+        if (!empty($tax_rates)) {
+            $first_rate = reset($tax_rates);
+            return number_format((float)$first_rate->tax_rate, 1, '.', '');
+        }
+        
+        return '0';
+    }
+
+    /**
+     * Get site language in 3-letter code format
+     *
+     * @return string Language code (e.g., 'eng', 'ger', 'fra')
+     */
+    private static function get_site_language() {
+        $locale = get_locale();
+        $lang_map = array(
+            'en' => 'eng', 'de' => 'ger', 'fr' => 'fra', 'it' => 'ita',
+            'es' => 'spa', 'pt' => 'por', 'nl' => 'dut', 'pl' => 'pol',
+            'ru' => 'rus', 'ja' => 'jpn', 'zh' => 'chi', 'ko' => 'kor',
+        );
+        $short_locale = substr($locale, 0, 2);
+        return isset($lang_map[$short_locale]) ? $lang_map[$short_locale] : '';
     }
 
     /**

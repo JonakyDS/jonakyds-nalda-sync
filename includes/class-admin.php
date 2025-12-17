@@ -43,13 +43,9 @@ class Jonakyds_Nalda_Sync_Admin {
     public function register_settings() {
         register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_enabled');
         register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_schedule', array($this, 'reschedule_cron_on_change'));
-        register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_country');
-        register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_currency');
-        register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_tax_rate');
         register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_return_days');
         register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_delivery_days');
         register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_condition');
-        register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_language');
         register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_default_brand');
         register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_require_gtin');
         register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_public_access');
@@ -70,6 +66,26 @@ class Jonakyds_Nalda_Sync_Admin {
         }
         
         return $new_value;
+    }
+
+    /**
+     * Get the standard tax rate from WooCommerce
+     *
+     * @return string Tax rate percentage
+     */
+    private static function get_wc_tax_rate() {
+        if (!wc_tax_enabled()) {
+            return '0';
+        }
+        
+        // Get standard tax rates for the base country
+        $tax_rates = WC_Tax::get_rates_for_tax_class('');
+        if (!empty($tax_rates)) {
+            $first_rate = reset($tax_rates);
+            return number_format((float)$first_rate->tax_rate, 1, '.', '');
+        }
+        
+        return '0';
     }
 
     /**
@@ -319,16 +335,17 @@ class Jonakyds_Nalda_Sync_Admin {
 
         $enabled = get_option('jonakyds_nalda_sync_enabled', 'no');
         $schedule = get_option('jonakyds_nalda_sync_schedule', 'hourly');
-        $country = get_option('jonakyds_nalda_sync_country', 'CH');
-        $currency = get_option('jonakyds_nalda_sync_currency', 'CHF');
-        $tax_rate = get_option('jonakyds_nalda_sync_tax_rate', '8.1');
         $return_days = get_option('jonakyds_nalda_sync_return_days', '14');
         $delivery_days = get_option('jonakyds_nalda_sync_delivery_days', '1');
         $condition = get_option('jonakyds_nalda_sync_condition', 'new');
-        $language = get_option('jonakyds_nalda_sync_language', '');
         $default_brand = get_option('jonakyds_nalda_sync_default_brand', '');
         $require_gtin = get_option('jonakyds_nalda_sync_require_gtin', 'yes');
         $public_access = get_option('jonakyds_nalda_sync_public_access', 'no');
+        
+        // Get values from WooCommerce settings
+        $wc_country = WC()->countries->get_base_country();
+        $wc_currency = get_woocommerce_currency();
+        $wc_tax_rate = self::get_wc_tax_rate();
         
         $logs = Jonakyds_Nalda_CSV_Exporter::get_logs();
         $csv_info = Jonakyds_Nalda_CSV_Exporter::get_csv_info();
@@ -386,6 +403,27 @@ class Jonakyds_Nalda_Sync_Admin {
                 </div>
                 <?php endif; ?>
 
+                <!-- WooCommerce Settings Info -->
+                <div class="jonakyds-card">
+                    <h2><?php _e('Store Settings (from WooCommerce)', 'jonakyds-nalda-sync'); ?></h2>
+                    <p class="description"><?php _e('These values are automatically detected from your WooCommerce settings.', 'jonakyds-nalda-sync'); ?></p>
+                    <div class="jonakyds-form-row-inline" style="margin-top: 15px;">
+                        <div>
+                            <strong><?php _e('Country:', 'jonakyds-nalda-sync'); ?></strong>
+                            <span><?php echo esc_html($wc_country); ?></span>
+                        </div>
+                        <div>
+                            <strong><?php _e('Currency:', 'jonakyds-nalda-sync'); ?></strong>
+                            <span><?php echo esc_html($wc_currency); ?></span>
+                        </div>
+                        <div>
+                            <strong><?php _e('Tax Rate:', 'jonakyds-nalda-sync'); ?></strong>
+                            <span><?php echo esc_html($wc_tax_rate); ?>%</span>
+                        </div>
+                    </div>
+                    <p style="margin-top: 15px;"><small><?php printf(__('To change these, go to %sWooCommerce Settings%s.', 'jonakyds-nalda-sync'), '<a href="' . admin_url('admin.php?page=wc-settings') . '">', '</a>'); ?></small></p>
+                </div>
+
                 <!-- Settings Card -->
                 <div class="jonakyds-card">
                     <h2><?php _e('Export Configuration', 'jonakyds-nalda-sync'); ?></h2>
@@ -394,52 +432,15 @@ class Jonakyds_Nalda_Sync_Admin {
                         
                         <div class="jonakyds-form-row-inline">
                             <div>
-                                <label for="jonakyds_nalda_sync_country">
-                                    <?php _e('Country', 'jonakyds-nalda-sync'); ?>
-                                </label>
-                                <select id="jonakyds_nalda_sync_country" name="jonakyds_nalda_sync_country">
-                                    <option value="CH" <?php selected($country, 'CH'); ?>>Switzerland (CH)</option>
-                                    <option value="DE" <?php selected($country, 'DE'); ?>>Germany (DE)</option>
-                                    <option value="AT" <?php selected($country, 'AT'); ?>>Austria (AT)</option>
-                                    <option value="FR" <?php selected($country, 'FR'); ?>>France (FR)</option>
-                                    <option value="IT" <?php selected($country, 'IT'); ?>>Italy (IT)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label for="jonakyds_nalda_sync_currency">
-                                    <?php _e('Currency', 'jonakyds-nalda-sync'); ?>
-                                </label>
-                                <select id="jonakyds_nalda_sync_currency" name="jonakyds_nalda_sync_currency">
-                                    <option value="CHF" <?php selected($currency, 'CHF'); ?>>CHF</option>
-                                    <option value="EUR" <?php selected($currency, 'EUR'); ?>>EUR</option>
-                                    <option value="USD" <?php selected($currency, 'USD'); ?>>USD</option>
-                                    <option value="GBP" <?php selected($currency, 'GBP'); ?>>GBP</option>
-                                </select>
-                            </div>
-                            <div>
                                 <label for="jonakyds_nalda_sync_condition">
-                                    <?php _e('Product Condition', 'jonakyds-nalda-sync'); ?>
+                                    <?php _e('Default Product Condition', 'jonakyds-nalda-sync'); ?>
                                 </label>
                                 <select id="jonakyds_nalda_sync_condition" name="jonakyds_nalda_sync_condition">
                                     <option value="new" <?php selected($condition, 'new'); ?>><?php _e('New', 'jonakyds-nalda-sync'); ?></option>
                                     <option value="used" <?php selected($condition, 'used'); ?>><?php _e('Used', 'jonakyds-nalda-sync'); ?></option>
                                     <option value="refurbished" <?php selected($condition, 'refurbished'); ?>><?php _e('Refurbished', 'jonakyds-nalda-sync'); ?></option>
                                 </select>
-                            </div>
-                        </div>
-
-                        <div class="jonakyds-form-row-inline">
-                            <div>
-                                <label for="jonakyds_nalda_sync_tax_rate">
-                                    <?php _e('Tax Rate (%)', 'jonakyds-nalda-sync'); ?>
-                                </label>
-                                <input 
-                                    type="text" 
-                                    id="jonakyds_nalda_sync_tax_rate" 
-                                    name="jonakyds_nalda_sync_tax_rate" 
-                                    value="<?php echo esc_attr($tax_rate); ?>" 
-                                    placeholder="8.1"
-                                />
+                                <small><?php _e('Default condition for all products', 'jonakyds-nalda-sync'); ?></small>
                             </div>
                             <div>
                                 <label for="jonakyds_nalda_sync_delivery_days">
@@ -469,33 +470,18 @@ class Jonakyds_Nalda_Sync_Admin {
                             </div>
                         </div>
 
-                        <div class="jonakyds-form-row-inline">
-                            <div>
-                                <label for="jonakyds_nalda_sync_language">
-                                    <?php _e('Language Code', 'jonakyds-nalda-sync'); ?>
-                                </label>
-                                <input 
-                                    type="text" 
-                                    id="jonakyds_nalda_sync_language" 
-                                    name="jonakyds_nalda_sync_language" 
-                                    value="<?php echo esc_attr($language); ?>" 
-                                    placeholder="ger, eng, fra..."
-                                />
-                                <small><?php _e('Optional language code (e.g., ger, eng, fra)', 'jonakyds-nalda-sync'); ?></small>
-                            </div>
-                            <div>
-                                <label for="jonakyds_nalda_sync_default_brand">
-                                    <?php _e('Default Brand', 'jonakyds-nalda-sync'); ?>
-                                </label>
-                                <input 
-                                    type="text" 
-                                    id="jonakyds_nalda_sync_default_brand" 
-                                    name="jonakyds_nalda_sync_default_brand" 
-                                    value="<?php echo esc_attr($default_brand); ?>" 
-                                    placeholder="Your Brand Name"
-                                />
-                                <small><?php _e('Used when product has no brand set', 'jonakyds-nalda-sync'); ?></small>
-                            </div>
+                        <div class="jonakyds-form-row">
+                            <label for="jonakyds_nalda_sync_default_brand">
+                                <?php _e('Default Brand', 'jonakyds-nalda-sync'); ?>
+                            </label>
+                            <input 
+                                type="text" 
+                                id="jonakyds_nalda_sync_default_brand" 
+                                name="jonakyds_nalda_sync_default_brand" 
+                                value="<?php echo esc_attr($default_brand); ?>" 
+                                placeholder="Your Brand Name"
+                            />
+                            <small><?php _e('Fallback brand when product has no brand attribute set', 'jonakyds-nalda-sync'); ?></small>
                         </div>
 
                         <div class="jonakyds-form-row">

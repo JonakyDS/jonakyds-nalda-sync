@@ -103,15 +103,6 @@ function jonakyds_nalda_sync_activate() {
     if (!get_option('jonakyds_nalda_sync_enabled')) {
         add_option('jonakyds_nalda_sync_enabled', 'no');
     }
-    if (!get_option('jonakyds_nalda_sync_country')) {
-        add_option('jonakyds_nalda_sync_country', 'CH');
-    }
-    if (!get_option('jonakyds_nalda_sync_currency')) {
-        add_option('jonakyds_nalda_sync_currency', 'CHF');
-    }
-    if (!get_option('jonakyds_nalda_sync_tax_rate')) {
-        add_option('jonakyds_nalda_sync_tax_rate', '8.1');
-    }
     if (!get_option('jonakyds_nalda_sync_return_days')) {
         add_option('jonakyds_nalda_sync_return_days', '14');
     }
