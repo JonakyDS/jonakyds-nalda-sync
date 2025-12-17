@@ -49,13 +49,15 @@ class Jonakyds_Nalda_Sync_Admin {
         register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_condition');
         register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_default_brand');
         register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_require_gtin');
-        // SFTP settings
+        // FTP/SFTP settings
         register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_ftp_enabled');
+        register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_ftp_type');
         register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_ftp_server');
         register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_ftp_port');
         register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_ftp_username');
         register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_ftp_password');
         register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_ftp_path');
+        register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_ftp_ssl');
     }
 
     /**
@@ -376,13 +378,15 @@ class Jonakyds_Nalda_Sync_Admin {
         $default_brand = get_option('jonakyds_nalda_sync_default_brand', '');
         $require_gtin = get_option('jonakyds_nalda_sync_require_gtin', 'yes');
         
-        // SFTP settings
+        // FTP/SFTP settings
         $ftp_enabled = get_option('jonakyds_nalda_sync_ftp_enabled', 'no');
+        $ftp_type = get_option('jonakyds_nalda_sync_ftp_type', 'ftp');
         $ftp_server = get_option('jonakyds_nalda_sync_ftp_server', '');
-        $ftp_port = get_option('jonakyds_nalda_sync_ftp_port', '22');
+        $ftp_port = get_option('jonakyds_nalda_sync_ftp_port', '21');
         $ftp_username = get_option('jonakyds_nalda_sync_ftp_username', '');
         $ftp_password = get_option('jonakyds_nalda_sync_ftp_password', '');
         $ftp_path = get_option('jonakyds_nalda_sync_ftp_path', '/');
+        $ftp_ssl = get_option('jonakyds_nalda_sync_ftp_ssl', 'no');
         
         // Get values from WooCommerce settings
         $wc_country = WC()->countries->get_base_country();
@@ -549,8 +553,8 @@ class Jonakyds_Nalda_Sync_Admin {
 
                         <hr style="margin: 25px 0;">
 
-                        <h3><?php _e('Nalda SFTP Upload', 'jonakyds-nalda-sync'); ?></h3>
-                        <p class="description"><?php _e('Configure SFTP settings to automatically upload the CSV file to Nalda.', 'jonakyds-nalda-sync'); ?></p>
+                        <h3><?php _e('Nalda FTP/SFTP Upload', 'jonakyds-nalda-sync'); ?></h3>
+                        <p class="description"><?php _e('Configure FTP or SFTP settings to automatically upload the CSV file to Nalda.', 'jonakyds-nalda-sync'); ?></p>
 
                         <div class="jonakyds-form-row">
                             <label for="jonakyds_nalda_sync_ftp_enabled">
@@ -561,27 +565,52 @@ class Jonakyds_Nalda_Sync_Admin {
                                     value="yes"
                                     <?php checked($ftp_enabled, 'yes'); ?>
                                 />
-                                <?php _e('Enable SFTP upload to Nalda', 'jonakyds-nalda-sync'); ?>
+                                <?php _e('Enable FTP/SFTP upload to Nalda', 'jonakyds-nalda-sync'); ?>
                             </label>
-                            <small><?php _e('When enabled, the CSV file will be uploaded to the Nalda SFTP server after each export.', 'jonakyds-nalda-sync'); ?></small>
+                            <small><?php _e('When enabled, the CSV file will be uploaded to the Nalda server after each export.', 'jonakyds-nalda-sync'); ?></small>
+                        </div>
+
+                        <div class="jonakyds-form-row">
+                            <label for="jonakyds_nalda_sync_ftp_type">
+                                <?php _e('Connection Type', 'jonakyds-nalda-sync'); ?>
+                            </label>
+                            <select id="jonakyds_nalda_sync_ftp_type" name="jonakyds_nalda_sync_ftp_type">
+                                <option value="ftp" <?php selected($ftp_type, 'ftp'); ?>><?php _e('FTP (Standard)', 'jonakyds-nalda-sync'); ?></option>
+                                <option value="sftp" <?php selected($ftp_type, 'sftp'); ?>><?php _e('SFTP (SSH)', 'jonakyds-nalda-sync'); ?></option>
+                            </select>
+                            <small><?php _e('FTP is more widely supported. SFTP requires the SSH2 PHP extension.', 'jonakyds-nalda-sync'); ?></small>
+                        </div>
+
+                        <div class="jonakyds-form-row" id="jonakyds-ftp-ssl-row">
+                            <label for="jonakyds_nalda_sync_ftp_ssl">
+                                <input 
+                                    type="checkbox" 
+                                    id="jonakyds_nalda_sync_ftp_ssl" 
+                                    name="jonakyds_nalda_sync_ftp_ssl" 
+                                    value="yes"
+                                    <?php checked($ftp_ssl, 'yes'); ?>
+                                />
+                                <?php _e('Use FTP over SSL (FTPS)', 'jonakyds-nalda-sync'); ?>
+                            </label>
+                            <small><?php _e('Enable for encrypted FTP connection. Only applies to FTP mode.', 'jonakyds-nalda-sync'); ?></small>
                         </div>
 
                         <div class="jonakyds-form-row-inline">
                             <div>
                                 <label for="jonakyds_nalda_sync_ftp_server">
-                                    <?php _e('SFTP Server', 'jonakyds-nalda-sync'); ?>
+                                    <?php _e('Server', 'jonakyds-nalda-sync'); ?>
                                 </label>
                                 <input 
                                     type="text" 
                                     id="jonakyds_nalda_sync_ftp_server" 
                                     name="jonakyds_nalda_sync_ftp_server" 
                                     value="<?php echo esc_attr($ftp_server); ?>" 
-                                    placeholder="sftp.nalda.ch"
+                                    placeholder="ftp.nalda.ch"
                                 />
                             </div>
                             <div>
                                 <label for="jonakyds_nalda_sync_ftp_port">
-                                    <?php _e('SFTP Port', 'jonakyds-nalda-sync'); ?>
+                                    <?php _e('Port', 'jonakyds-nalda-sync'); ?>
                                 </label>
                                 <input 
                                     type="number" 
@@ -590,7 +619,7 @@ class Jonakyds_Nalda_Sync_Admin {
                                     value="<?php echo esc_attr($ftp_port); ?>" 
                                     min="1"
                                     max="65535"
-                                    placeholder="22"
+                                    placeholder="21"
                                 />
                             </div>
                         </div>
@@ -598,7 +627,7 @@ class Jonakyds_Nalda_Sync_Admin {
                         <div class="jonakyds-form-row-inline">
                             <div>
                                 <label for="jonakyds_nalda_sync_ftp_username">
-                                    <?php _e('SFTP Username', 'jonakyds-nalda-sync'); ?>
+                                    <?php _e('Username', 'jonakyds-nalda-sync'); ?>
                                 </label>
                                 <input 
                                     type="text" 
@@ -610,7 +639,7 @@ class Jonakyds_Nalda_Sync_Admin {
                             </div>
                             <div>
                                 <label for="jonakyds_nalda_sync_ftp_password">
-                                    <?php _e('SFTP Password', 'jonakyds-nalda-sync'); ?>
+                                    <?php _e('Password', 'jonakyds-nalda-sync'); ?>
                                 </label>
                                 <input 
                                     type="password" 
@@ -633,12 +662,12 @@ class Jonakyds_Nalda_Sync_Admin {
                                 value="<?php echo esc_attr($ftp_path); ?>" 
                                 placeholder="/"
                             />
-                            <small><?php _e('The directory on the SFTP server where the CSV file will be uploaded.', 'jonakyds-nalda-sync'); ?></small>
+                            <small><?php _e('The directory on the server where the CSV file will be uploaded.', 'jonakyds-nalda-sync'); ?></small>
                         </div>
 
                         <div class="jonakyds-form-row">
                             <button type="button" class="button jonakyds-test-sftp-btn" id="jonakyds-test-sftp">
-                                <?php _e('Test SFTP Connection', 'jonakyds-nalda-sync'); ?>
+                                <?php _e('Test Connection', 'jonakyds-nalda-sync'); ?>
                             </button>
                             <div id="jonakyds-sftp-test-result" class="jonakyds-sftp-test-result"></div>
                         </div>
@@ -968,17 +997,33 @@ class Jonakyds_Nalda_Sync_Admin {
                         }
                     }
 
-                    // Test SFTP Connection
+                    // Toggle SSL option visibility based on connection type
+                    function toggleSslOption() {
+                        const ftpType = $('#jonakyds_nalda_sync_ftp_type').val();
+                        if (ftpType === 'sftp') {
+                            $('#jonakyds-ftp-ssl-row').hide();
+                        } else {
+                            $('#jonakyds-ftp-ssl-row').show();
+                        }
+                    }
+                    
+                    // Initial toggle and bind change event
+                    toggleSslOption();
+                    $('#jonakyds_nalda_sync_ftp_type').on('change', toggleSslOption);
+
+                    // Test FTP/SFTP Connection
                     $('#jonakyds-test-sftp').on('click', function() {
                         const $btn = $(this);
                         const $result = $('#jonakyds-sftp-test-result');
                         
                         // Get current form values
+                        const ftpType = $('#jonakyds_nalda_sync_ftp_type').val();
                         const server = $('#jonakyds_nalda_sync_ftp_server').val();
-                        const port = $('#jonakyds_nalda_sync_ftp_port').val() || '22';
+                        const port = $('#jonakyds_nalda_sync_ftp_port').val() || (ftpType === 'sftp' ? '22' : '21');
                         const username = $('#jonakyds_nalda_sync_ftp_username').val();
                         const password = $('#jonakyds_nalda_sync_ftp_password').val();
                         const path = $('#jonakyds_nalda_sync_ftp_path').val() || '/';
+                        const ssl = $('#jonakyds_nalda_sync_ftp_ssl').is(':checked') ? 'yes' : 'no';
                         
                         // Validate required fields
                         if (!server || !username || !password) {
@@ -990,7 +1035,8 @@ class Jonakyds_Nalda_Sync_Admin {
                         // Show testing state
                         $btn.prop('disabled', true).text('<?php echo esc_js(__('Testing...', 'jonakyds-nalda-sync')); ?>');
                         $result.removeClass('success error').addClass('testing');
-                        $result.text('<?php echo esc_js(__('Connecting to SFTP server...', 'jonakyds-nalda-sync')); ?>');
+                        const connectingMsg = ftpType === 'sftp' ? '<?php echo esc_js(__('Connecting to SFTP server...', 'jonakyds-nalda-sync')); ?>' : '<?php echo esc_js(__('Connecting to FTP server...', 'jonakyds-nalda-sync')); ?>';
+                        $result.text(connectingMsg);
                         
                         // Make AJAX request
                         $.ajax({
@@ -999,14 +1045,16 @@ class Jonakyds_Nalda_Sync_Admin {
                             data: {
                                 action: 'jonakyds_test_sftp_connection',
                                 nonce: '<?php echo wp_create_nonce('jonakyds_test_sftp'); ?>',
+                                ftp_type: ftpType,
                                 server: server,
                                 port: port,
                                 username: username,
                                 password: password,
-                                path: path
+                                path: path,
+                                ssl: ssl
                             },
                             success: function(response) {
-                                $btn.prop('disabled', false).text('<?php echo esc_js(__('Test SFTP Connection', 'jonakyds-nalda-sync')); ?>');
+                                $btn.prop('disabled', false).text('<?php echo esc_js(__('Test Connection', 'jonakyds-nalda-sync')); ?>');
                                 $result.removeClass('testing');
                                 
                                 if (response.success) {
@@ -1016,7 +1064,7 @@ class Jonakyds_Nalda_Sync_Admin {
                                 }
                             },
                             error: function() {
-                                $btn.prop('disabled', false).text('<?php echo esc_js(__('Test SFTP Connection', 'jonakyds-nalda-sync')); ?>');
+                                $btn.prop('disabled', false).text('<?php echo esc_js(__('Test Connection', 'jonakyds-nalda-sync')); ?>');
                                 $result.removeClass('testing').addClass('error');
                                 $result.text('<?php echo esc_js(__('An error occurred while testing the connection.', 'jonakyds-nalda-sync')); ?>');
                             }
@@ -1139,7 +1187,7 @@ class Jonakyds_Nalda_Sync_Admin {
     }
 
     /**
-     * Handle SFTP connection test via AJAX
+     * Handle FTP/SFTP connection test via AJAX
      */
     public function handle_test_sftp_connection() {
         // Verify nonce
@@ -1153,20 +1201,34 @@ class Jonakyds_Nalda_Sync_Admin {
         }
 
         // Get parameters
+        $ftp_type = isset($_POST['ftp_type']) ? sanitize_text_field($_POST['ftp_type']) : 'ftp';
         $server = isset($_POST['server']) ? sanitize_text_field($_POST['server']) : '';
-        $port = isset($_POST['port']) ? absint($_POST['port']) : 22;
+        $port = isset($_POST['port']) ? absint($_POST['port']) : ($ftp_type === 'sftp' ? 22 : 21);
         $username = isset($_POST['username']) ? sanitize_text_field($_POST['username']) : '';
         $password = isset($_POST['password']) ? $_POST['password'] : '';
         $path = isset($_POST['path']) ? sanitize_text_field($_POST['path']) : '/';
+        $ssl = isset($_POST['ssl']) && $_POST['ssl'] === 'yes';
 
         // Validate required fields
         if (empty($server) || empty($username) || empty($password)) {
             wp_send_json_error(array('message' => __('Server, username, and password are required.', 'jonakyds-nalda-sync')));
         }
 
+        // Test based on connection type
+        if ($ftp_type === 'sftp') {
+            $this->test_sftp_connection($server, $port, $username, $password, $path);
+        } else {
+            $this->test_ftp_connection($server, $port, $username, $password, $path, $ssl);
+        }
+    }
+
+    /**
+     * Test SFTP connection
+     */
+    private function test_sftp_connection($server, $port, $username, $password, $path) {
         // Check if SSH2 extension is available
         if (!function_exists('ssh2_connect')) {
-            wp_send_json_error(array('message' => __('SSH2 PHP extension is not installed. Please contact your hosting provider to enable it.', 'jonakyds-nalda-sync')));
+            wp_send_json_error(array('message' => __('SSH2 PHP extension is not installed. Please contact your hosting provider to enable it, or use standard FTP instead.', 'jonakyds-nalda-sync')));
         }
 
         // Try to connect
@@ -1202,5 +1264,54 @@ class Jonakyds_Nalda_Sync_Admin {
 
         // Success!
         wp_send_json_success(array('message' => __('SFTP connection successful! The server and credentials are working correctly.', 'jonakyds-nalda-sync')));
+    }
+
+    /**
+     * Test FTP connection
+     */
+    private function test_ftp_connection($server, $port, $username, $password, $path, $ssl = false) {
+        // Check if FTP extension is available
+        if (!function_exists('ftp_connect')) {
+            wp_send_json_error(array('message' => __('FTP PHP extension is not installed. Please contact your hosting provider to enable it.', 'jonakyds-nalda-sync')));
+        }
+
+        // Try to connect
+        if ($ssl && function_exists('ftp_ssl_connect')) {
+            $connection = @ftp_ssl_connect($server, $port, 30);
+        } else {
+            $connection = @ftp_connect($server, $port, 30);
+        }
+        
+        if (!$connection) {
+            $protocol = $ssl ? 'FTPS' : 'FTP';
+            wp_send_json_error(array('message' => sprintf(__('Could not connect to %s server: %s:%d', 'jonakyds-nalda-sync'), $protocol, $server, $port)));
+        }
+
+        // Try to login
+        $login_result = @ftp_login($connection, $username, $password);
+        if (!$login_result) {
+            @ftp_close($connection);
+            wp_send_json_error(array('message' => __('FTP authentication failed. Please check your username and password.', 'jonakyds-nalda-sync')));
+        }
+
+        // Enable passive mode (better compatibility with firewalls)
+        @ftp_pasv($connection, true);
+
+        // Check if the remote path exists and is accessible
+        $path = trim($path, '/');
+        if (!empty($path)) {
+            $chdir_result = @ftp_chdir($connection, '/' . $path);
+            if (!$chdir_result) {
+                @ftp_close($connection);
+                wp_send_json_error(array('message' => sprintf(__('Connection successful, but remote path "/%s" is not accessible or does not exist.', 'jonakyds-nalda-sync'), $path)));
+            }
+        }
+
+        // Close connection
+        @ftp_close($connection);
+
+        // Success!
+        $protocol = $ssl ? 'FTPS' : 'FTP';
+        wp_send_json_success(array('message' => sprintf(__('%s connection successful! The server and credentials are working correctly.', 'jonakyds-nalda-sync'), $protocol)));
     }
 }

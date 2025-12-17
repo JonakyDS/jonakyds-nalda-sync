@@ -183,14 +183,14 @@ class Jonakyds_Nalda_CSV_Exporter {
             $result['skipped']
         );
 
-        // Upload to SFTP if enabled
+        // Upload to FTP/SFTP if enabled
         $ftp_result = self::upload_to_ftp($final_file);
         if ($ftp_result['attempted']) {
             $result['ftp_upload'] = $ftp_result;
             if ($ftp_result['success']) {
-                $result['message'] .= ' ' . __('SFTP upload successful.', 'jonakyds-nalda-sync');
+                $result['message'] .= ' ' . __('FTP upload successful.', 'jonakyds-nalda-sync');
             } else {
-                $result['message'] .= ' ' . sprintf(__('SFTP upload failed: %s', 'jonakyds-nalda-sync'), $ftp_result['error']);
+                $result['message'] .= ' ' . sprintf(__('FTP upload failed: %s', 'jonakyds-nalda-sync'), $ftp_result['error']);
             }
         }
 
@@ -255,7 +255,7 @@ class Jonakyds_Nalda_CSV_Exporter {
     }
 
     /**
-     * Upload CSV file to Nalda SFTP server
+     * Upload CSV file to Nalda FTP/SFTP server
      *
      * @param string $file_path Path to the CSV file
      * @return array Result with 'attempted', 'success', and 'error' keys
@@ -267,7 +267,7 @@ class Jonakyds_Nalda_CSV_Exporter {
             'error' => '',
         );
 
-        // Check if SFTP upload is enabled
+        // Check if FTP upload is enabled
         $ftp_enabled = get_option('jonakyds_nalda_sync_ftp_enabled', 'no');
         if ($ftp_enabled !== 'yes') {
             return $result;
@@ -275,16 +275,18 @@ class Jonakyds_Nalda_CSV_Exporter {
 
         $result['attempted'] = true;
 
-        // Get SFTP settings
-        $sftp_server = get_option('jonakyds_nalda_sync_ftp_server', '');
-        $sftp_port = (int) get_option('jonakyds_nalda_sync_ftp_port', 22);
-        $sftp_username = get_option('jonakyds_nalda_sync_ftp_username', '');
-        $sftp_password = get_option('jonakyds_nalda_sync_ftp_password', '');
-        $sftp_path = get_option('jonakyds_nalda_sync_ftp_path', '/');
+        // Get FTP/SFTP settings
+        $ftp_type = get_option('jonakyds_nalda_sync_ftp_type', 'ftp');
+        $ftp_server = get_option('jonakyds_nalda_sync_ftp_server', '');
+        $ftp_port = (int) get_option('jonakyds_nalda_sync_ftp_port', $ftp_type === 'sftp' ? 22 : 21);
+        $ftp_username = get_option('jonakyds_nalda_sync_ftp_username', '');
+        $ftp_password = get_option('jonakyds_nalda_sync_ftp_password', '');
+        $ftp_path = get_option('jonakyds_nalda_sync_ftp_path', '/');
+        $ftp_ssl = get_option('jonakyds_nalda_sync_ftp_ssl', 'no') === 'yes';
 
         // Validate settings
-        if (empty($sftp_server) || empty($sftp_username) || empty($sftp_password)) {
-            $result['error'] = __('SFTP server, username, and password are required.', 'jonakyds-nalda-sync');
+        if (empty($ftp_server) || empty($ftp_username) || empty($ftp_password)) {
+            $result['error'] = __('FTP server, username, and password are required.', 'jonakyds-nalda-sync');
             return $result;
         }
 
@@ -294,21 +296,33 @@ class Jonakyds_Nalda_CSV_Exporter {
             return $result;
         }
 
+        // Upload based on connection type
+        if ($ftp_type === 'sftp') {
+            return self::upload_via_sftp($file_path, $ftp_server, $ftp_port, $ftp_username, $ftp_password, $ftp_path, $result);
+        } else {
+            return self::upload_via_ftp($file_path, $ftp_server, $ftp_port, $ftp_username, $ftp_password, $ftp_path, $ftp_ssl, $result);
+        }
+    }
+
+    /**
+     * Upload file via SFTP
+     */
+    private static function upload_via_sftp($file_path, $server, $port, $username, $password, $remote_path, $result) {
         // Check if SSH2 extension is available
         if (!function_exists('ssh2_connect')) {
-            $result['error'] = __('SSH2 PHP extension is not installed. Please contact your hosting provider to enable it.', 'jonakyds-nalda-sync');
+            $result['error'] = __('SSH2 PHP extension is not installed. Please contact your hosting provider to enable it, or use standard FTP instead.', 'jonakyds-nalda-sync');
             return $result;
         }
 
         // Connect to SFTP server
-        $connection = @ssh2_connect($sftp_server, $sftp_port);
+        $connection = @ssh2_connect($server, $port);
         if (!$connection) {
-            $result['error'] = sprintf(__('Could not connect to SFTP server: %s:%d', 'jonakyds-nalda-sync'), $sftp_server, $sftp_port);
+            $result['error'] = sprintf(__('Could not connect to SFTP server: %s:%d', 'jonakyds-nalda-sync'), $server, $port);
             return $result;
         }
 
         // Authenticate with password
-        $auth_result = @ssh2_auth_password($connection, $sftp_username, $sftp_password);
+        $auth_result = @ssh2_auth_password($connection, $username, $password);
         if (!$auth_result) {
             $result['error'] = __('SFTP authentication failed. Please check your username and password.', 'jonakyds-nalda-sync');
             return $result;
@@ -322,11 +336,11 @@ class Jonakyds_Nalda_CSV_Exporter {
         }
 
         // Prepare remote path - ensure it starts with /
-        $sftp_path = trim($sftp_path, '/');
-        if (empty($sftp_path)) {
+        $remote_path = trim($remote_path, '/');
+        if (empty($remote_path)) {
             $remote_file = '/nalda-products.csv';
         } else {
-            $remote_file = '/' . $sftp_path . '/nalda-products.csv';
+            $remote_file = '/' . $remote_path . '/nalda-products.csv';
         }
 
         // Upload the file using SFTP stream wrapper
@@ -357,6 +371,67 @@ class Jonakyds_Nalda_CSV_Exporter {
 
         return $result;
     }
+
+    /**
+     * Upload file via FTP
+     */
+    private static function upload_via_ftp($file_path, $server, $port, $username, $password, $remote_path, $ssl, $result) {
+        // Check if FTP extension is available
+        if (!function_exists('ftp_connect')) {
+            $result['error'] = __('FTP PHP extension is not installed. Please contact your hosting provider to enable it.', 'jonakyds-nalda-sync');
+            return $result;
+        }
+
+        // Connect to FTP server
+        if ($ssl && function_exists('ftp_ssl_connect')) {
+            $connection = @ftp_ssl_connect($server, $port, 30);
+        } else {
+            $connection = @ftp_connect($server, $port, 30);
+        }
+        
+        if (!$connection) {
+            $protocol = $ssl ? 'FTPS' : 'FTP';
+            $result['error'] = sprintf(__('Could not connect to %s server: %s:%d', 'jonakyds-nalda-sync'), $protocol, $server, $port);
+            return $result;
+        }
+
+        // Login
+        $login_result = @ftp_login($connection, $username, $password);
+        if (!$login_result) {
+            @ftp_close($connection);
+            $result['error'] = __('FTP authentication failed. Please check your username and password.', 'jonakyds-nalda-sync');
+            return $result;
+        }
+
+        // Enable passive mode (better compatibility with firewalls)
+        @ftp_pasv($connection, true);
+
+        // Change to remote directory if specified
+        $remote_path = trim($remote_path, '/');
+        if (!empty($remote_path)) {
+            $chdir_result = @ftp_chdir($connection, '/' . $remote_path);
+            if (!$chdir_result) {
+                @ftp_close($connection);
+                $result['error'] = sprintf(__('Could not change to remote directory: /%s', 'jonakyds-nalda-sync'), $remote_path);
+                return $result;
+            }
+        }
+
+        // Upload the file
+        $upload_result = @ftp_put($connection, 'nalda-products.csv', $file_path, FTP_BINARY);
+        
+        @ftp_close($connection);
+
+        if (!$upload_result) {
+            $result['error'] = __('Failed to upload file to FTP server.', 'jonakyds-nalda-sync');
+        } else {
+            $result['success'] = true;
+            update_option('jonakyds_nalda_sync_last_ftp_upload', current_time('mysql'));
+        }
+
+        return $result;
+    }
+
 
     /**
      * Build a product row for CSV
