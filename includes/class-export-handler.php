@@ -24,9 +24,9 @@ class Jonakyds_Export_Handler {
         }
 
         // Check if there's already an active export
-        $existing_export_id = get_option('jonakyds_nalda_active_export_id');
+        $existing_export_id = get_option('jonakyds_active_export_id');
         if ($existing_export_id) {
-            $existing_progress = get_transient('jonakyds_nalda_export_progress_' . $existing_export_id);
+            $existing_progress = get_transient('jonakyds_export_progress_' . $existing_export_id);
             if ($existing_progress && ($existing_progress['status'] === 'running' || $existing_progress['status'] === 'init')) {
                 wp_send_json_error(array(
                     'message' => __('An export is already in progress. Please wait for it to complete.', 'jonakyds-nalda-sync'),
@@ -40,7 +40,7 @@ class Jonakyds_Export_Handler {
         $export_id = uniqid('export_', true);
         
         // Store as active export
-        update_option('jonakyds_nalda_active_export_id', $export_id, false);
+        update_option('jonakyds_active_export_id', $export_id);
         
         // Initialize progress
         self::update_progress($export_id, array(
@@ -53,8 +53,9 @@ class Jonakyds_Export_Handler {
             'total' => 0
         ));
 
-        // Trigger background process via non-blocking HTTP request
-        self::trigger_background_export($export_id);
+        // Start background process
+        wp_schedule_single_event(time(), 'jonakyds_background_export', array($export_id));
+        spawn_cron();
 
         wp_send_json_success(array('export_id' => $export_id));
     }
@@ -75,7 +76,7 @@ class Jonakyds_Export_Handler {
             wp_send_json_error(array('message' => __('Invalid export ID', 'jonakyds-nalda-sync')));
         }
 
-        $progress = get_transient('jonakyds_nalda_export_progress_' . $export_id);
+        $progress = get_transient('jonakyds_export_progress_' . $export_id);
         
         if ($progress === false) {
             wp_send_json_error(array('message' => __('Progress not found', 'jonakyds-nalda-sync')));
@@ -94,17 +95,17 @@ class Jonakyds_Export_Handler {
             wp_send_json_error(array('message' => __('Unauthorized', 'jonakyds-nalda-sync')));
         }
 
-        $active_export_id = get_option('jonakyds_nalda_active_export_id');
+        $active_export_id = get_option('jonakyds_active_export_id');
         
         if (!$active_export_id) {
             wp_send_json_success(array('active' => false));
             return;
         }
 
-        $progress = get_transient('jonakyds_nalda_export_progress_' . $active_export_id);
+        $progress = get_transient('jonakyds_export_progress_' . $active_export_id);
         
         if ($progress === false || $progress['status'] === 'complete' || $progress['status'] === 'error') {
-            delete_option('jonakyds_nalda_active_export_id');
+            delete_option('jonakyds_active_export_id');
             wp_send_json_success(array('active' => false));
             return;
         }
@@ -165,7 +166,7 @@ class Jonakyds_Export_Handler {
                 'status' => 'error',
                 'message' => __('No products found to export.', 'jonakyds-nalda-sync')
             ));
-            delete_option('jonakyds_nalda_active_export_id');
+            delete_option('jonakyds_active_export_id');
             return;
         }
 
@@ -187,7 +188,7 @@ class Jonakyds_Export_Handler {
                 'status' => 'error',
                 'message' => __('Failed to create CSV file.', 'jonakyds-nalda-sync')
             ));
-            delete_option('jonakyds_nalda_active_export_id');
+            delete_option('jonakyds_active_export_id');
             return;
         }
 
@@ -318,7 +319,11 @@ class Jonakyds_Export_Handler {
             'total' => $total_products
         ));
 
-        delete_option('jonakyds_nalda_active_export_id');
+        // Clear active export
+        delete_option('jonakyds_active_export_id');
+        
+        // Keep progress for 5 minutes
+        set_transient('jonakyds_export_progress_' . $export_id, get_transient('jonakyds_export_progress_' . $export_id), 300);
     }
 
     /**
@@ -598,66 +603,33 @@ class Jonakyds_Export_Handler {
     }
 
     /**
-     * Update progress transient
+     * Update progress
      */
-    public static function update_progress($export_id, $data) {
-        $existing = get_transient('jonakyds_nalda_export_progress_' . $export_id);
-        
-        if ($existing) {
-            $data = array_merge($existing, $data);
-        }
-        
-        set_transient('jonakyds_nalda_export_progress_' . $export_id, $data, HOUR_IN_SECONDS);
+    private static function update_progress($export_id, $data) {
+        self::update_progress_public($export_id, $data);
     }
-
+    
     /**
-     * Trigger background export via non-blocking HTTP request
+     * Public update progress method for cron access
      */
-    private static function trigger_background_export($export_id) {
-        $url = add_query_arg(array(
-            'action' => 'jonakyds_run_background_export',
-            'export_id' => $export_id,
-            'nonce' => wp_create_nonce('jonakyds_background_export_' . $export_id)
-        ), admin_url('admin-ajax.php'));
-
-        wp_remote_post($url, array(
-            'timeout' => 0.01,
-            'blocking' => false,
-            'sslverify' => false,
-            'cookies' => $_COOKIE,
-        ));
-    }
-
-    /**
-     * Handle background export AJAX request
-     */
-    public static function run_background_export() {
-        // Verify nonce
-        $export_id = isset($_REQUEST['export_id']) ? sanitize_text_field($_REQUEST['export_id']) : '';
-        $nonce = isset($_REQUEST['nonce']) ? $_REQUEST['nonce'] : '';
+    public static function update_progress_public($export_id, $data) {
+        $current = get_transient('jonakyds_export_progress_' . $export_id);
         
-        if (empty($export_id) || !wp_verify_nonce($nonce, 'jonakyds_background_export_' . $export_id)) {
-            wp_die('Invalid request');
+        if ($current === false) {
+            $current = array(
+                'status' => 'init',
+                'step' => '',
+                'percent' => 0,
+                'message' => '',
+                'exported' => 0,
+                'skipped' => 0,
+                'total' => 0,
+                'is_cron' => false
+            );
         }
 
-        // Close connection and continue in background
-        if (function_exists('fastcgi_finish_request')) {
-            fastcgi_finish_request();
-        } else {
-            // For non-FastCGI environments
-            ignore_user_abort(true);
-            if (ob_get_level()) {
-                ob_end_clean();
-            }
-            header('Connection: close');
-            header('Content-Length: 0');
-            flush();
-        }
-
-        // Run the export
-        self::background_export($export_id);
-        
-        exit;
+        $progress = array_merge($current, $data);
+        set_transient('jonakyds_export_progress_' . $export_id, $progress, 3600); // 1 hour
     }
 }
 
@@ -665,13 +637,49 @@ class Jonakyds_Export_Handler {
 add_action('wp_ajax_jonakyds_start_export', array('Jonakyds_Export_Handler', 'start_export'));
 add_action('wp_ajax_jonakyds_get_progress', array('Jonakyds_Export_Handler', 'get_progress'));
 add_action('wp_ajax_jonakyds_get_active_export', array('Jonakyds_Export_Handler', 'get_active_export'));
-add_action('wp_ajax_jonakyds_run_background_export', array('Jonakyds_Export_Handler', 'run_background_export'));
-add_action('wp_ajax_nopriv_jonakyds_run_background_export', array('Jonakyds_Export_Handler', 'run_background_export'));
+
+// Register background export action
+add_action('jonakyds_background_export', array('Jonakyds_Export_Handler', 'background_export'));
 
 // Register cron export
 add_action('jonakyds_nalda_sync_cron', function() {
     $enabled = get_option('jonakyds_nalda_sync_enabled', 'no');
     if ($enabled === 'yes') {
-        Jonakyds_Nalda_CSV_Exporter::export_products();
+        // Check if there's already an active export
+        $existing_export_id = get_option('jonakyds_active_export_id');
+        if ($existing_export_id) {
+            $existing_progress = get_transient('jonakyds_export_progress_' . $existing_export_id);
+            if ($existing_progress && ($existing_progress['status'] === 'running' || $existing_progress['status'] === 'init')) {
+                // Export already in progress, skip and log it
+                $result = array(
+                    'success' => false,
+                    'message' => __('Scheduled export skipped - another export is already in progress', 'jonakyds-nalda-sync'),
+                    'exported' => 0,
+                    'skipped' => 0,
+                    'errors' => array()
+                );
+                Jonakyds_Nalda_CSV_Exporter::log_export($result);
+                return;
+            }
+        }
+        
+        // Generate unique export ID for cron export
+        $export_id = uniqid('cron_export_', true);
+        update_option('jonakyds_active_export_id', $export_id);
+        
+        // Initialize progress
+        Jonakyds_Export_Handler::update_progress_public($export_id, array(
+            'status' => 'running',
+            'step' => 'init',
+            'percent' => 0,
+            'message' => __('Automated export starting...', 'jonakyds-nalda-sync'),
+            'exported' => 0,
+            'skipped' => 0,
+            'total' => 0,
+            'is_cron' => true
+        ));
+        
+        // Run background export
+        Jonakyds_Export_Handler::background_export($export_id);
     }
 });
