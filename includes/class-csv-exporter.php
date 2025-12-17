@@ -777,11 +777,15 @@ class Jonakyds_Nalda_CSV_Exporter {
             return null;
         }
 
+        // Convert file modification time to WordPress timezone
+        $file_mtime = filemtime($file_path);
+        $modified_time = get_date_from_gmt(date('Y-m-d H:i:s', $file_mtime), 'Y-m-d H:i:s');
+
         return array(
             'path' => $file_path,
             'url' => self::get_csv_file_url(),
             'size' => filesize($file_path),
-            'modified' => date('Y-m-d H:i:s', filemtime($file_path)),
+            'modified' => $modified_time,
             'rows' => self::count_csv_rows($file_path),
         );
     }
