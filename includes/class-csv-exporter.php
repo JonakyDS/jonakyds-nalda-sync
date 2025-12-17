@@ -711,7 +711,8 @@ class Jonakyds_Nalda_CSV_Exporter {
             'message' => $result['message'],
             'exported' => $result['exported'],
             'skipped' => $result['skipped'],
-            'errors' => isset($result['errors']) ? $result['errors'] : array()
+            'errors' => isset($result['errors']) ? $result['errors'] : array(),
+            'sftp_upload' => isset($result['ftp_upload']) ? $result['ftp_upload'] : null
         );
         
         // Keep only last 20 logs

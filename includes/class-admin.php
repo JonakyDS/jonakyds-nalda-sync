@@ -1045,6 +1045,14 @@ class Jonakyds_Nalda_Sync_Admin {
                                     <div class="jonakyds-log-stats">
                                         <?php _e('Exported:', 'jonakyds-nalda-sync'); ?> <?php echo isset($log['exported']) ? $log['exported'] : 0; ?> |
                                         <?php _e('Skipped:', 'jonakyds-nalda-sync'); ?> <?php echo isset($log['skipped']) ? $log['skipped'] : 0; ?>
+                                        <?php if (isset($log['sftp_upload']) && $log['sftp_upload']['attempted']): ?>
+                                            | <?php _e('SFTP:', 'jonakyds-nalda-sync'); ?> 
+                                            <?php if ($log['sftp_upload']['success']): ?>
+                                                <span style="color: #46b450;">✓ <?php _e('Uploaded', 'jonakyds-nalda-sync'); ?></span>
+                                            <?php else: ?>
+                                                <span style="color: #dc3232;">✗ <?php _e('Failed', 'jonakyds-nalda-sync'); ?><?php echo !empty($log['sftp_upload']['error']) ? ' - ' . esc_html($log['sftp_upload']['error']) : ''; ?></span>
+                                            <?php endif; ?>
+                                        <?php endif; ?>
                                     </div>
                                 <?php endif; ?>
                             </div>
