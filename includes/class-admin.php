@@ -1069,6 +1069,20 @@ class Jonakyds_Nalda_Sync_Admin {
                                             <?php endif; ?>
                                         <?php endif; ?>
                                     </div>
+                                    <?php if (isset($log['skip_reasons']) && !empty(array_filter($log['skip_reasons']))): ?>
+                                        <div class="jonakyds-log-skip-reasons" style="margin-top: 5px; font-size: 12px; color: #666;">
+                                            <em><?php _e('Skip reasons:', 'jonakyds-nalda-sync'); ?></em>
+                                            <?php if (!empty($log['skip_reasons']['no_gtin'])): ?>
+                                                <span style="margin-left: 10px;"><?php printf(__('No GTIN: %d', 'jonakyds-nalda-sync'), $log['skip_reasons']['no_gtin']); ?></span>
+                                            <?php endif; ?>
+                                            <?php if (!empty($log['skip_reasons']['no_price'])): ?>
+                                                <span style="margin-left: 10px;"><?php printf(__('No price: %d', 'jonakyds-nalda-sync'), $log['skip_reasons']['no_price']); ?></span>
+                                            <?php endif; ?>
+                                            <?php if (!empty($log['skip_reasons']['product_not_found'])): ?>
+                                                <span style="margin-left: 10px;"><?php printf(__('Product not found: %d', 'jonakyds-nalda-sync'), $log['skip_reasons']['product_not_found']); ?></span>
+                                            <?php endif; ?>
+                                        </div>
+                                    <?php endif; ?>
                                 <?php endif; ?>
                             </div>
                         <?php endforeach; ?>

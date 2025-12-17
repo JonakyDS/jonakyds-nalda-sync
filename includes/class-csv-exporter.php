@@ -70,6 +70,11 @@ class Jonakyds_Nalda_CSV_Exporter {
             'message' => '',
             'exported' => 0,
             'skipped' => 0,
+            'skip_reasons' => array(
+                'no_gtin' => 0,
+                'no_price' => 0,
+                'product_not_found' => 0,
+            ),
             'errors' => array()
         );
 
@@ -116,6 +121,7 @@ class Jonakyds_Nalda_CSV_Exporter {
             
             if (!$product) {
                 $result['skipped']++;
+                $result['skip_reasons']['product_not_found']++;
                 continue;
             }
 
@@ -127,22 +133,28 @@ class Jonakyds_Nalda_CSV_Exporter {
                     $variation = wc_get_product($variation_data['variation_id']);
                     if ($variation) {
                         $row = self::build_product_row($variation, $settings, $product);
-                        if ($row) {
+                        if (is_array($row)) {
                             fputcsv($handle, $row);
                             $result['exported']++;
                         } else {
                             $result['skipped']++;
+                            if ($row && isset($result['skip_reasons'][$row])) {
+                                $result['skip_reasons'][$row]++;
+                            }
                         }
                     }
                 }
             } else {
                 // Simple product
                 $row = self::build_product_row($product, $settings);
-                if ($row) {
+                if (is_array($row)) {
                     fputcsv($handle, $row);
                     $result['exported']++;
                 } else {
                     $result['skipped']++;
+                    if ($row && isset($result['skip_reasons'][$row])) {
+                        $result['skip_reasons'][$row]++;
+                    }
                 }
             }
 
@@ -352,7 +364,7 @@ class Jonakyds_Nalda_CSV_Exporter {
      * @param WC_Product $product The product object
      * @param array $settings Export settings
      * @param WC_Product|null $parent Parent product for variations
-     * @return array|false Product row data or false if product should be skipped
+     * @return array|string Product row data array, or skip reason string if product should be skipped
      */
     private static function build_product_row($product, $settings, $parent = null) {
         // Get GTIN (EAN/ISBN/UPC) - required field
@@ -361,7 +373,7 @@ class Jonakyds_Nalda_CSV_Exporter {
         // Skip products without GTIN unless configured to export them
         $require_gtin = get_option('jonakyds_nalda_sync_require_gtin', 'yes');
         if ($require_gtin === 'yes' && empty($gtin)) {
-            return false;
+            return 'no_gtin';
         }
 
         // Get product title
@@ -384,7 +396,7 @@ class Jonakyds_Nalda_CSV_Exporter {
         // Get price
         $price = $product->get_price();
         if (empty($price) || $price <= 0) {
-            return false; // Skip products without price
+            return 'no_price'; // Skip products without price
         }
 
         // Get stock quantity
@@ -712,6 +724,7 @@ class Jonakyds_Nalda_CSV_Exporter {
             'message' => $result['message'],
             'exported' => $result['exported'],
             'skipped' => $result['skipped'],
+            'skip_reasons' => isset($result['skip_reasons']) ? $result['skip_reasons'] : array(),
             'errors' => isset($result['errors']) ? $result['errors'] : array(),
             'sftp_upload' => isset($result['ftp_upload']) ? $result['ftp_upload'] : null
         );
