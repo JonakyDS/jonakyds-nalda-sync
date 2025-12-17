@@ -1,0 +1,26 @@
+# WordPress
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*~
+
+# Node modules (if you add any build tools later)
+node_modules/
+
+# Composer (if you add dependencies)
+/vendor/
+composer.lock
+
+# Plugin zip
+*.zip
