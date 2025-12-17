@@ -808,8 +808,8 @@ class Jonakyds_Nalda_Sync_Admin {
                             url: ajaxurl,
                             type: 'POST',
                             data: {
-                                action: 'jonakyds_get_active_export',
-                                nonce: '<?php echo wp_create_nonce('jonakyds_ajax_export'); ?>'
+                                action: 'jonakyds_nalda_get_active_export',
+                                nonce: '<?php echo wp_create_nonce('jonakyds_nalda_ajax_export'); ?>'
                             },
                             success: function(response) {
                                 if (response.success && response.data.active) {
@@ -879,8 +879,8 @@ class Jonakyds_Nalda_Sync_Admin {
                             url: ajaxurl,
                             type: 'POST',
                             data: {
-                                action: 'jonakyds_start_export',
-                                nonce: '<?php echo wp_create_nonce('jonakyds_ajax_export'); ?>'
+                                action: 'jonakyds_nalda_start_export',
+                                nonce: '<?php echo wp_create_nonce('jonakyds_nalda_ajax_export'); ?>'
                             },
                             success: function(response) {
                                 if (response.success) {
@@ -916,8 +916,8 @@ class Jonakyds_Nalda_Sync_Admin {
                                 url: ajaxurl,
                                 type: 'POST',
                                 data: {
-                                    action: 'jonakyds_get_progress',
-                                    nonce: '<?php echo wp_create_nonce('jonakyds_ajax_export'); ?>',
+                                    action: 'jonakyds_nalda_get_progress',
+                                    nonce: '<?php echo wp_create_nonce('jonakyds_nalda_ajax_export'); ?>',
                                     export_id: currentExportId
                                 },
                                 success: function(response) {

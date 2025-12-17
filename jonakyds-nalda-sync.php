@@ -3,7 +3,7 @@
  * Plugin Name: Nalda Sync (JonakyDS)
  * Plugin URI: https://github.com/JonakyDS/jonakyds-nalda-sync
  * Description: Generate and export WooCommerce products to CSV for Nalda marketplace
- * Version: 1.0.18
+ * Version: 1.0.20
  * Author: Jonaky Adhikary
  * Author URI: https://jonakyds.com
  * License: GPL v2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('JONAKYDS_NALDA_SYNC_VERSION', '1.0.18');
+define('JONAKYDS_NALDA_SYNC_VERSION', '1.0.20');
 define('JONAKYDS_NALDA_SYNC_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('JONAKYDS_NALDA_SYNC_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('JONAKYDS_NALDA_SYNC_CSV_DIR', WP_CONTENT_DIR . '/nalda-exports/');
@@ -137,10 +137,18 @@ register_deactivation_hook(__FILE__, 'jonakyds_nalda_sync_deactivate');
  * Add custom cron schedule for 10 minutes
  */
 function jonakyds_nalda_sync_cron_schedules($schedules) {
-    $schedules['every_10_minutes'] = array(
+    // Use plugin-specific name to avoid conflicts with other plugins
+    $schedules['jonakyds_nalda_every_10_minutes'] = array(
         'interval' => 600,
-        'display' => __('Every 10 Minutes', 'jonakyds-nalda-sync')
+        'display' => __('Every 10 Minutes (Nalda Sync)', 'jonakyds-nalda-sync')
     );
+    // Also support generic name for backward compatibility
+    if (!isset($schedules['every_10_minutes'])) {
+        $schedules['every_10_minutes'] = array(
+            'interval' => 600,
+            'display' => __('Every 10 Minutes', 'jonakyds-nalda-sync')
+        );
+    }
     return $schedules;
 }
 add_filter('cron_schedules', 'jonakyds_nalda_sync_cron_schedules');
