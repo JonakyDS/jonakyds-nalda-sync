@@ -3,7 +3,7 @@
  * Plugin Name: Nalda Sync (JonakyDS)
  * Plugin URI: https://github.com/JonakyDS/jonakyds-nalda-sync
  * Description: Generate and export WooCommerce products to CSV for Nalda marketplace
- * Version: 1.0.5
+ * Version: 1.0.6
  * Author: Jonaky Adhikary
  * Author URI: https://jonakyds.com
  * License: GPL v2 or later
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('JONAKYDS_NALDA_SYNC_VERSION', '1.0.5');
+define('JONAKYDS_NALDA_SYNC_VERSION', '1.0.6');
 define('JONAKYDS_NALDA_SYNC_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('JONAKYDS_NALDA_SYNC_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('JONAKYDS_NALDA_SYNC_CSV_DIR', WP_CONTENT_DIR . '/nalda-exports/');

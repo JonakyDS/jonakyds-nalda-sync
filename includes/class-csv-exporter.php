@@ -171,6 +171,17 @@ class Jonakyds_Nalda_CSV_Exporter {
             $result['skipped']
         );
 
+        // Upload to FTP if enabled
+        $ftp_result = self::upload_to_ftp($final_file);
+        if ($ftp_result['attempted']) {
+            $result['ftp_upload'] = $ftp_result;
+            if ($ftp_result['success']) {
+                $result['message'] .= ' ' . __('FTP upload successful.', 'jonakyds-nalda-sync');
+            } else {
+                $result['message'] .= ' ' . sprintf(__('FTP upload failed: %s', 'jonakyds-nalda-sync'), $ftp_result['error']);
+            }
+        }
+
         // Log the export
         self::log_export($result);
 
@@ -229,6 +240,91 @@ class Jonakyds_Nalda_CSV_Exporter {
         );
         $short_locale = substr($locale, 0, 2);
         return isset($lang_map[$short_locale]) ? $lang_map[$short_locale] : '';
+    }
+
+    /**
+     * Upload CSV file to Nalda FTP server
+     *
+     * @param string $file_path Path to the CSV file
+     * @return array Result with 'attempted', 'success', and 'error' keys
+     */
+    private static function upload_to_ftp($file_path) {
+        $result = array(
+            'attempted' => false,
+            'success' => false,
+            'error' => '',
+        );
+
+        // Check if FTP upload is enabled
+        $ftp_enabled = get_option('jonakyds_nalda_sync_ftp_enabled', 'no');
+        if ($ftp_enabled !== 'yes') {
+            return $result;
+        }
+
+        $result['attempted'] = true;
+
+        // Get FTP settings
+        $ftp_server = get_option('jonakyds_nalda_sync_ftp_server', '');
+        $ftp_port = (int) get_option('jonakyds_nalda_sync_ftp_port', 21);
+        $ftp_username = get_option('jonakyds_nalda_sync_ftp_username', '');
+        $ftp_password = get_option('jonakyds_nalda_sync_ftp_password', '');
+        $ftp_path = get_option('jonakyds_nalda_sync_ftp_path', '/');
+
+        // Validate settings
+        if (empty($ftp_server) || empty($ftp_username) || empty($ftp_password)) {
+            $result['error'] = __('FTP server, username, and password are required.', 'jonakyds-nalda-sync');
+            return $result;
+        }
+
+        // Check if file exists
+        if (!file_exists($file_path)) {
+            $result['error'] = __('CSV file not found.', 'jonakyds-nalda-sync');
+            return $result;
+        }
+
+        // Connect to FTP server
+        $ftp_conn = @ftp_connect($ftp_server, $ftp_port, 30);
+        if (!$ftp_conn) {
+            $result['error'] = sprintf(__('Could not connect to FTP server: %s:%d', 'jonakyds-nalda-sync'), $ftp_server, $ftp_port);
+            return $result;
+        }
+
+        // Login to FTP server
+        $login_result = @ftp_login($ftp_conn, $ftp_username, $ftp_password);
+        if (!$login_result) {
+            ftp_close($ftp_conn);
+            $result['error'] = __('FTP login failed. Please check your username and password.', 'jonakyds-nalda-sync');
+            return $result;
+        }
+
+        // Enable passive mode (often required for firewalls)
+        ftp_pasv($ftp_conn, true);
+
+        // Change to the remote directory
+        $ftp_path = rtrim($ftp_path, '/');
+        if (!empty($ftp_path) && $ftp_path !== '/') {
+            if (!@ftp_chdir($ftp_conn, $ftp_path)) {
+                ftp_close($ftp_conn);
+                $result['error'] = sprintf(__('Could not change to remote directory: %s', 'jonakyds-nalda-sync'), $ftp_path);
+                return $result;
+            }
+        }
+
+        // Upload the file
+        $remote_file = 'nalda-products.csv';
+        $upload_result = @ftp_put($ftp_conn, $remote_file, $file_path, FTP_BINARY);
+
+        // Close FTP connection
+        ftp_close($ftp_conn);
+
+        if ($upload_result) {
+            $result['success'] = true;
+            update_option('jonakyds_nalda_sync_last_ftp_upload', current_time('mysql'));
+        } else {
+            $result['error'] = __('Failed to upload file to FTP server.', 'jonakyds-nalda-sync');
+        }
+
+        return $result;
     }
 
     /**

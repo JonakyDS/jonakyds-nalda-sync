@@ -49,6 +49,13 @@ class Jonakyds_Nalda_Sync_Admin {
         register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_default_brand');
         register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_require_gtin');
         register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_public_access');
+        // FTP settings
+        register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_ftp_enabled');
+        register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_ftp_server');
+        register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_ftp_port');
+        register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_ftp_username');
+        register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_ftp_password');
+        register_setting('jonakyds_nalda_sync_settings', 'jonakyds_nalda_sync_ftp_path');
     }
 
     /**
@@ -342,6 +349,14 @@ class Jonakyds_Nalda_Sync_Admin {
         $require_gtin = get_option('jonakyds_nalda_sync_require_gtin', 'yes');
         $public_access = get_option('jonakyds_nalda_sync_public_access', 'no');
         
+        // FTP settings
+        $ftp_enabled = get_option('jonakyds_nalda_sync_ftp_enabled', 'no');
+        $ftp_server = get_option('jonakyds_nalda_sync_ftp_server', '');
+        $ftp_port = get_option('jonakyds_nalda_sync_ftp_port', '21');
+        $ftp_username = get_option('jonakyds_nalda_sync_ftp_username', '');
+        $ftp_password = get_option('jonakyds_nalda_sync_ftp_password', '');
+        $ftp_path = get_option('jonakyds_nalda_sync_ftp_path', '/');
+        
         // Get values from WooCommerce settings
         $wc_country = WC()->countries->get_base_country();
         $wc_currency = get_woocommerce_currency();
@@ -510,6 +525,95 @@ class Jonakyds_Nalda_Sync_Admin {
                                 <?php _e('Allow public CSV access', 'jonakyds-nalda-sync'); ?>
                             </label>
                             <small><?php _e('If checked, the CSV file URL will be accessible without login. Useful for Nalda to fetch the feed automatically.', 'jonakyds-nalda-sync'); ?></small>
+                        </div>
+
+                        <hr style="margin: 25px 0;">
+
+                        <h3><?php _e('Nalda FTP Upload', 'jonakyds-nalda-sync'); ?></h3>
+                        <p class="description"><?php _e('Configure FTP settings to automatically upload the CSV file to Nalda.', 'jonakyds-nalda-sync'); ?></p>
+
+                        <div class="jonakyds-form-row">
+                            <label for="jonakyds_nalda_sync_ftp_enabled">
+                                <input 
+                                    type="checkbox" 
+                                    id="jonakyds_nalda_sync_ftp_enabled" 
+                                    name="jonakyds_nalda_sync_ftp_enabled" 
+                                    value="yes"
+                                    <?php checked($ftp_enabled, 'yes'); ?>
+                                />
+                                <?php _e('Enable FTP upload to Nalda', 'jonakyds-nalda-sync'); ?>
+                            </label>
+                            <small><?php _e('When enabled, the CSV file will be uploaded to the Nalda FTP server after each export.', 'jonakyds-nalda-sync'); ?></small>
+                        </div>
+
+                        <div class="jonakyds-form-row-inline">
+                            <div>
+                                <label for="jonakyds_nalda_sync_ftp_server">
+                                    <?php _e('FTP Server', 'jonakyds-nalda-sync'); ?>
+                                </label>
+                                <input 
+                                    type="text" 
+                                    id="jonakyds_nalda_sync_ftp_server" 
+                                    name="jonakyds_nalda_sync_ftp_server" 
+                                    value="<?php echo esc_attr($ftp_server); ?>" 
+                                    placeholder="ftp.nalda.ch"
+                                />
+                            </div>
+                            <div>
+                                <label for="jonakyds_nalda_sync_ftp_port">
+                                    <?php _e('FTP Port', 'jonakyds-nalda-sync'); ?>
+                                </label>
+                                <input 
+                                    type="number" 
+                                    id="jonakyds_nalda_sync_ftp_port" 
+                                    name="jonakyds_nalda_sync_ftp_port" 
+                                    value="<?php echo esc_attr($ftp_port); ?>" 
+                                    min="1"
+                                    max="65535"
+                                    placeholder="21"
+                                />
+                            </div>
+                        </div>
+
+                        <div class="jonakyds-form-row-inline">
+                            <div>
+                                <label for="jonakyds_nalda_sync_ftp_username">
+                                    <?php _e('FTP Username', 'jonakyds-nalda-sync'); ?>
+                                </label>
+                                <input 
+                                    type="text" 
+                                    id="jonakyds_nalda_sync_ftp_username" 
+                                    name="jonakyds_nalda_sync_ftp_username" 
+                                    value="<?php echo esc_attr($ftp_username); ?>" 
+                                    placeholder="username"
+                                />
+                            </div>
+                            <div>
+                                <label for="jonakyds_nalda_sync_ftp_password">
+                                    <?php _e('FTP Password', 'jonakyds-nalda-sync'); ?>
+                                </label>
+                                <input 
+                                    type="password" 
+                                    id="jonakyds_nalda_sync_ftp_password" 
+                                    name="jonakyds_nalda_sync_ftp_password" 
+                                    value="<?php echo esc_attr($ftp_password); ?>" 
+                                    placeholder="••••••••"
+                                />
+                            </div>
+                        </div>
+
+                        <div class="jonakyds-form-row">
+                            <label for="jonakyds_nalda_sync_ftp_path">
+                                <?php _e('Remote Path', 'jonakyds-nalda-sync'); ?>
+                            </label>
+                            <input 
+                                type="text" 
+                                id="jonakyds_nalda_sync_ftp_path" 
+                                name="jonakyds_nalda_sync_ftp_path" 
+                                value="<?php echo esc_attr($ftp_path); ?>" 
+                                placeholder="/"
+                            />
+                            <small><?php _e('The directory on the FTP server where the CSV file will be uploaded.', 'jonakyds-nalda-sync'); ?></small>
                         </div>
 
                         <hr style="margin: 25px 0;">
