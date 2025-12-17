@@ -23,7 +23,7 @@ jobs:
       - name: Get version from plugin file
         id: get_version
         run: |
-          VERSION=$(grep "Version:" jonakyds-stock-sync.php | awk '{print $3}' | tr -d '\r')
+          VERSION=$(grep "Version:" jonakyds-nalda-sync.php | awk '{print $3}' | tr -d '\r')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Plugin version: $VERSION"
 
@@ -40,7 +40,7 @@ jobs:
         if: steps.check_release.outputs.exists == 'false'
         run: |
           # Create a temp directory with the plugin name
-          mkdir -p build/jonakyds-stock-sync
+          mkdir -p build/jonakyds-nalda-sync
           
           # Copy plugin files (excluding unnecessary files)
           rsync -av --exclude='.git' \
@@ -51,16 +51,16 @@ jobs:
             --exclude='.DS_Store' \
             --exclude='*.log' \
             --exclude='UPDATE-TESTING.md' \
-            ./ build/jonakyds-stock-sync/
+            ./ build/jonakyds-nalda-sync/
           
           # Create zip with proper structure (plugin in subfolder)
           cd build
-          zip -r jonakyds-stock-sync.zip jonakyds-stock-sync
+          zip -r jonakyds-nalda-sync.zip jonakyds-nalda-sync
           cd ..
           
           # Move to dist folder
           mkdir -p dist
-          mv build/jonakyds-stock-sync.zip dist/
+          mv build/jonakyds-nalda-sync.zip dist/
 
       - name: Create Release
         if: steps.check_release.outputs.exists == 'false'
@@ -69,19 +69,19 @@ jobs:
           tag_name: v${{ steps.get_version.outputs.version }}
           name: Release v${{ steps.get_version.outputs.version }}
           body: |
-            ## Jonakyds Stock Sync v${{ steps.get_version.outputs.version }}
+            ## Jonakyds Nalda Sync v${{ steps.get_version.outputs.version }}
             
             Download the plugin zip file below and install it in your WordPress site.
             
             ### Installation
-            1. Download `jonakyds-stock-sync.zip`
+            1. Download `jonakyds-nalda-sync.zip`
             2. Go to WordPress Admin > Plugins > Add New > Upload Plugin
             3. Upload the zip file and activate
-            4. Configure at WooCommerce > Stock Sync
+            4. Configure at WooCommerce > Nalda Sync
             
             ### Changes
             See the [changelog](https://github.com/${{ github.repository }}/commits/main) for details.
-          files: dist/jonakyds-stock-sync.zip
+          files: dist/jonakyds-nalda-sync.zip
           draft: false
           prerelease: false
         env:
@@ -91,4 +91,4 @@ jobs:
         if: steps.check_release.outputs.exists == 'true'
         run: |
           echo "Release v${{ steps.get_version.outputs.version }} already exists. Skipping release creation."
-          echo "To create a new release, update the version number in jonakyds-stock-sync.php"
+          echo "To create a new release, update the version number in jonakyds-nalda-sync.php"
