@@ -323,6 +323,9 @@ class Jonakyds_Nalda_Sync_Updater {
     /**
      * Fix source directory name after download from GitHub
      * 
+     * GitHub zipball extracts to a folder like 'username-repo-hash'
+     * This needs to be renamed to match the plugin slug
+     * 
      * @param string $source File source location
      * @param string $remote_source Remote file source location
      * @param WP_Upgrader $upgrader WP_Upgrader instance
@@ -337,24 +340,34 @@ class Jonakyds_Nalda_Sync_Updater {
             return $source;
         }
 
-        // Expected directory name
+        // Get the source directory name (without trailing slash)
+        $source_dir = untrailingslashit($source);
+        
+        // Expected directory path
         $expected_dir = trailingslashit($remote_source) . $this->plugin_slug;
 
         // If source is already correct, return it
-        if ($source === $expected_dir) {
+        if ($source_dir === $expected_dir || basename($source_dir) === $this->plugin_slug) {
             return $source;
         }
 
-        // Rename the directory
-        $new_source = $expected_dir;
-        
-        if ($wp_filesystem->move($source, $new_source)) {
-            return $new_source;
+        // Check if the expected directory already exists and remove it
+        if ($wp_filesystem->exists($expected_dir)) {
+            $wp_filesystem->delete($expected_dir, true);
+        }
+
+        // Rename the directory from GitHub format to plugin slug
+        if ($wp_filesystem->move($source_dir, $expected_dir, true)) {
+            return trailingslashit($expected_dir);
         }
 
         return new WP_Error(
             'rename_failed',
-            __('Unable to rename the update to match the existing plugin directory.', 'jonakyds-nalda-sync')
+            sprintf(
+                __('Unable to rename the update directory. Source: %s, Expected: %s', 'jonakyds-nalda-sync'),
+                $source_dir,
+                $expected_dir
+            )
         );
     }
 
