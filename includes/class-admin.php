@@ -696,6 +696,14 @@ class Jonakyds_Nalda_Sync_Admin {
                     <button type="button" id="jonakyds-export-now" class="button button-primary button-hero jonakyds-sync-button">
                         <?php _e('Export Now', 'jonakyds-nalda-sync'); ?>
                     </button>
+                    
+                    <form method="post" action="<?php echo admin_url('admin-post.php'); ?>" style="display: inline-block; margin-left: 10px;">
+                        <input type="hidden" name="action" value="jonakyds_export_now" />
+                        <?php wp_nonce_field('jonakyds_export_now'); ?>
+                        <button type="submit" class="button" title="<?php esc_attr_e('Single request export without progress tracking (for testing)', 'jonakyds-nalda-sync'); ?>">
+                            <?php _e('Quick Export (Test)', 'jonakyds-nalda-sync'); ?>
+                        </button>
+                    </form>
 
                     <!-- Progress Container -->
                     <div id="jonakyds-progress-container" class="jonakyds-progress-container">
