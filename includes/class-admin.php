@@ -978,7 +978,7 @@ class Jonakyds_Nalda_Sync_Admin {
                                     $button.prop('disabled', false).html('<?php _e('Export Now', 'jonakyds-nalda-sync'); ?>');
                                 }
                             });
-                        }, 1000);
+                        }, 4000);
                     }
                     
                     function updateProgress(percent, message) {
